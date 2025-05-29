@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fechamento Lotofácil</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      padding: 20px;
+      text-align: center;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 8px;
+      margin: 10px auto;
+      max-width: 600px;
+    }
+    input[type="number"] {
+      width: 50px;
+      padding: 5px;
+      text-align: center;
+    }
+    input[type="text"], textarea {
+      width: 90%;
+      padding: 10px;
+      font-size: 16px;
+      margin: 10px auto;
+      display: block;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #resultado, #lf_resultados, #lf_frequencia {
+      white-space: pre-wrap;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
+    }
+    .destaque {
+      color: green;
+      font-weight: bold;
+    }
+    .concurso {
+      margin: 10px 0;
+      padding: 10px;
+      background: #e8f0fe;
+      border-radius: 5px;
+    }
+    #lf_resultados {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Fechamento e Conferência - Lotofácil</h1>
+
+  <p>Digite até <strong>18 números-base</strong> (de 1 a 25):</p>
+  <div class="grid" id="baseNumeros">
+    <!-- Inputs gerados via JS -->
+  </div>
+
+  <label for="limite">Limite de jogos a gerar:</label>
+  <input type="number" id="limite" value="50" min="1" max="1000">
+
+  <button onclick="gerarJogos()">Gerar Jogos</button>
+
+  <label for="resultadoOficial">Resultado Oficial (15 números separados por espaço):</label>
+  <input type="text" id="resultadoOficial" placeholder="Ex: 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15" />
+
+  <label for="jogos">Jogos Gerados:</label>
+  <textarea id="jogos" rows="10"></textarea>
+
+  <button onclick="conferirJogos()">Conferir Jogos</button>
+  <button onclick="baixarResultado()">Baixar Resultado</button>
+
+  <div id="resultado"></div>
+
+  <hr style="margin: 40px 0;" />
+
+  <h2>Últimos Resultados da Lotofácil e Análise</h2>
+  <button onclick="carregarResultados()">Carregar Últimos Resultados</button>
+  <div id="lf_resultados"></div>
+  <div id="lf_frequencia"></div>
+
+  <script>
+    // Gera os 18 campos de entrada
+    for (let i = 0; i < 18; i++) {
+      const input = document.createElement("input");
+      input.type = "number";
+      input.min = 1;
+      input.max = 25;
+      input.id = "n" + i;
+      document.getElementById("baseNumeros").appendChild(input);
+    }
+
+    // Função para gerar combinações
+    function gerarCombinacoes(array, k) {
+      const resultado = [];
+
+      function combinar(temp = [], i = 0) {
+        if (temp.length === k) {
+          resultado.push([...temp]);
+          return;
+        }
+        for (let j = i; j < array.length; j++) {
+          temp.push(array[j]);
+          combinar(temp, j + 1);
+          temp.pop();
+        }
+      }
+
+      combinar();
+      return resultado;
+    }
+
+    function gerarJogos() {
+      const numeros = [];
+      for (let i = 0; i < 18; i++) {
+        const val = parseInt(document.getElementById("n" + i).value);
+        if (!isNaN(val) && val >= 1 && val <= 25 && !numeros.includes(val)) {
+          numeros.push(val);
+        }
+      }
+
+      if (numeros.length !== 18) {
+        alert("Digite exatamente 18 números únicos entre 1 e 25.");
+        return;
+      }
+
+      const limite = parseInt(document.getElementById("limite").value);
+      const combinacoes = gerarCombinacoes(numeros, 15);
+      const jogosLimitados = combinacoes.slice(0, limite);
+
+      const jogosTexto = jogosLimitados.map(j => j.join(" ")).join("\n");
+      document.getElementById("jogos").value = jogosTexto;
+    }
+
+    let resultadoFinal = "";
+
+    function conferirJogos() {
+      const resultadoInput = document.getElementById("resultadoOficial").value.trim();
+      const jogosInput = document.getElementById("jogos").value.trim();
+      const resultadoDiv = document.getElementById("resultado");
+
+      const resultado = resultadoInput.split(/\s+/).map(Number);
+      if (resultado.length !== 15 || new Set(resultado).size !== 15 || resultado.some(n => n < 1 || n > 25 || isNaN(n))) {
+        resultadoDiv.textContent = "Erro: O resultado oficial deve conter 15 números únicos entre 1 e 25.";
+        return;
+      }
+
+      const linhas = jogosInput.split("\n").filter(l => l.trim() !== "");
+      let saida = "";
+
+      linhas.forEach((linha, index) => {
+        const numeros = linha.trim().split(/\s+/).map(Number);
+        if (numeros.length !== 15 || new Set(numeros).size !== 15 || numeros.some(n => n < 1 || n > 25 || isNaN(n))) {
+          saida += `Jogo ${index + 1}: inválido\n`;
+          return;
+        }
+
+        const acertos = numeros.filter(n => resultado.includes(n));
+        let texto = `Jogo ${index + 1}: ${acertos.length} acerto(s) - Números: ${acertos.join(", ")}`;
+        if (acertos.length >= 11) {
+          texto = `🎉 <span class="destaque">${texto}</span>`;
+        }
+        saida += texto + "\n";
+      });
+
+      resultadoDiv.innerHTML = saida;
+      resultadoFinal = saida.replace(/<[^>]+>/g, ""); // sem HTML para exportação
+    }
+
+    function baixarResultado() {
+      if (!resultadoFinal) {
+        alert("Conferência não realizada ainda.");
+        return;
+      }
+
+      const blob = new Blob([resultadoFinal], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "resultado_lotofacil.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // --- Função para carregar últimos resultados e análise ---
+
+    async function carregarResultados() {
+      const containerResultados = document.getElementById("lf_resultados");
+      const containerFrequencia = document.getElementById("lf_frequencia");
+
+      containerResultados.innerHTML = "Carregando...";
+      containerFrequencia.innerHTML = "";
+
+      const totalConcursos = 10; // altere para mais concursos se quiser
+      const resultados = [];
+
+      try {
+        // Buscar concurso mais recente
+        const ultimo = await fetch('https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest')
+          .then(res => res.json());
+
+        const numeroInicial = ultimo.concurso - totalConcursos + 1;
+
+        // Buscar concursos anteriores
+        for (let i = numeroInicial; i <= ultimo.concurso; i++) {
+          try {
+            const dados = await fetch(`https://loteriascaixa-api.herokuapp.com/api/lotofacil/${i}`)
+              .then(r => r.json());
+
+            resultados.push(dados);
+
+            containerResultados.innerHTML += `
+              <div class="concurso">
+                <strong>Concurso ${dados.concurso}</strong><br/>
+                Data: ${dados.data}<br/>
+                Dezenas: ${dados.dezenas.join(', ')}
+              </div>
+            `;
+          } catch (err) {
+            console.error("Erro no concurso", i);
+          }
+        }
+
+        analisarFrequencia(resultados);
+
+      } catch (err) {
+        containerResultados.innerHTML = "Erro ao carregar resultados.";
+        console.error(err);
+      }
+    }
+
+    // Calcula frequência dos números e mostra os 15 mais frequentes
+    function analisarFrequencia(resultados) {
+      const freq = {};
+      resultados.forEach(res => {
+        res.dezenas.forEach(n => {
+          freq[n] = (freq[n] || 0) + 1;
+        });
+      });
+
+      // Ordena por frequência decrescente
+      const numerosOrdenados = Object.entries(freq)
+        .sort((a, b) => b[1] - a[1])
+        .map(e => ({ numero: e[0], freq: e[1] }));
+
+      let texto = "Frequência dos números nos últimos concursos:\n";
+      texto += numerosOrdenados.map(e => `${e.numero}: ${e.freq}`).join(", ") + "\n\n";
+
+      texto += "15 números mais frequentes:\n";
+      texto += numerosOrdenados.slice(0, 15).map(e => e.numero).join(", ");
+
+      document.getElementById("lf_frequencia").textContent = texto;
+    }
+  </script>
+</body>
+</html>
